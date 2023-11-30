@@ -82,12 +82,14 @@ class PurchaseService:
         product_obj = Product.get_product_by_id(product_id)
         if not product_obj:
             raise ProductDoesNotExistException(product_id)
+        return product_obj
 
     @classmethod
     def _check_if_discount_coupon_is_valid(cls, discount_coupon):
         discount_coupon_obj = DiscountCode.get_coupon_by_value(discount_coupon=discount_coupon)
         if not discount_coupon_obj:
             raise DiscountCouponDoesNotExistException(discount_coupon)
+        return discount_coupon_obj
 
     @classmethod
     def _perform_transaction(cls, payment_details):
