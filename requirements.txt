@@ -1,0 +1,29 @@
+# Django Requirements
+Django==4.2.7
+django-environ==0.11.2
+djangorestframework==3.14.0
+django-reversion==5.0.8
+
+# UWSGI
+# uwsgi==2.0.22
+
+# JWT
+PyJWT==2.8.0
+
+# Swagger
+drf-yasg==1.21.7
+
+# Postgres Driver
+psycopg2==2.9.9
+
+requests==2.31.0
+
+python-dateutil==2.8.2
+
+# gunicorn
+gunicorn==21.2.0
+
+
+
+
+
