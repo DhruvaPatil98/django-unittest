@@ -1,5 +1,3 @@
-import datetime
-
 from django.test import TestCase
 from unittest.mock import patch
 from datetime import datetime
@@ -84,7 +82,7 @@ class TestPurchaseService(TestCase):
 
     @patch('apps.customer.services.PaymentService.transaction')
     def test_post_transaction_operations_transaction_timeout(self, payment_service_mock):
-        response_data = {'error': 'Transaction timeout.'}
+        response_data = {'error': 'Transaction timeout'}
         payment_service_mock.return_value = response_data
         with self.assertRaises(TransactionTimeoutException):
             PurchaseService.buy_product(self.product_id, self.discount_coupon, self.payment_details)
