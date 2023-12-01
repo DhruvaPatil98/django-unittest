@@ -4,7 +4,13 @@ from django.test import TestCase
 from unittest.mock import patch
 from datetime import datetime
 
-from apps.customer.exceptions import ProductDoesNotExistException, DiscountCouponDoesNotExistException
+from apps.customer.exceptions import (
+    ProductDoesNotExistException,
+    DiscountCouponDoesNotExistException,
+    InsufficientBalanceException,
+    TransactionTimeoutException,
+    IncorrectDetailsException,
+)
 from apps.customer.models import Product, DiscountCode
 from apps.customer.services.product_service import PurchaseService
 
@@ -16,7 +22,11 @@ class TestPurchaseService(TestCase):
         self.invalid_product_id = 'c7ec6681-90c7-4150-9c26-741d7d1a844c'
         self.discount_coupon = "DISCOUNT25"
         self.invalid_discount_coupon = "DISCOUNT100"
-        # self.discount_id = 'b7ec6681-90c7-4150-9c26-741d7d1a844c'
+        self.payment_details = {
+            "amount": 50,
+            "method": "credit_card"
+        }
+
         self.product = Product(
             id=self.product_id,
             name='Iphone 15',
@@ -33,26 +43,55 @@ class TestPurchaseService(TestCase):
         )
         self.discount_code.save()
 
-    @patch('apps.customer.models.Product')
-    def test_check_if_product_exists(self, product_mock):
-        product_mock.get_product_by_id.return_value = Product(id=self.product_id)
+    def test_check_if_product_exists(self):
         result = PurchaseService._check_if_product_exists(self.product_id)
         self.assertIsInstance(result, Product)
+        self.assertGreaterEqual(result.in_stock, 1)
 
-    @patch('apps.customer.models.Product')
-    def test_product_does_not_exist(self, product_mock):
-        product_mock.get_product_by_id.return_value = None
+    def test_product_does_not_exist(self):
         with self.assertRaises(ProductDoesNotExistException):
             PurchaseService._check_if_product_exists(self.invalid_product_id)
 
-    @patch('apps.customer.models.DiscountCode')
-    def test_check_if_discount_coupon_is_valid(self, discount_code_mock):
-        discount_code_mock.get_coupon_by_value.return_value = self.discount_code
+    def test_check_if_discount_coupon_is_valid(self):
         result = PurchaseService._check_if_discount_coupon_is_valid(self.discount_coupon)
         self.assertIsInstance(result, DiscountCode)
 
-    @patch('apps.customer.models.DiscountCode')
-    def test_check_if_coupon_does_not_exist(self, product_mock):
-        product_mock.get_coupon_by_value.return_value = None
+    def test_check_if_coupon_does_not_exist(self):
         with self.assertRaises(DiscountCouponDoesNotExistException):
             PurchaseService._check_if_discount_coupon_is_valid(self.invalid_discount_coupon)
+
+    @patch('apps.customer.services.PaymentService.transaction')
+    def test_perform_transaction(self, payment_service_mock):
+        response_data = {'status': 200}
+        payment_service_mock.return_value = response_data
+        response = PurchaseService._perform_transaction(self.payment_details)
+        self.assertEqual(response['status'], 200)
+
+    @patch('apps.customer.services.PaymentService.transaction')
+    def test_post_transaction_operations_success(self, payment_service_mock):
+        response_data = {'status': 200}
+        payment_service_mock.return_value = response_data
+        result = PurchaseService.buy_product(self.product_id, self.discount_coupon, self.payment_details)
+        self.assertEqual(result, 'success')
+
+    @patch('apps.customer.services.PaymentService.transaction')
+    def test_post_transaction_operations_insufficient_balance(self, payment_service_mock):
+        response_data = {'error': 'Insufficient balance'}
+        payment_service_mock.return_value = response_data
+
+        with self.assertRaises(InsufficientBalanceException):
+            PurchaseService.buy_product(self.product_id, self.discount_coupon, self.payment_details)
+
+    @patch('apps.customer.services.PaymentService.transaction')
+    def test_post_transaction_operations_transaction_timeout(self, payment_service_mock):
+        response_data = {'error': 'Transaction timeout.'}
+        payment_service_mock.return_value = response_data
+        with self.assertRaises(TransactionTimeoutException):
+            PurchaseService.buy_product(self.product_id, self.discount_coupon, self.payment_details)
+
+    @patch('apps.customer.services.PaymentService.transaction')
+    def test_post_transaction_operations_incorrect_details(self, payment_service_mock):
+        response_data = {'error': 'Incorrect details'}
+        payment_service_mock.return_value = response_data
+        with self.assertRaises(IncorrectDetailsException):
+            PurchaseService.buy_product(self.product_id, self.discount_coupon, self.payment_details)

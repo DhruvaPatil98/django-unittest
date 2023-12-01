@@ -16,7 +16,7 @@ class Product(BaseModel):
     @classmethod
     def reduce_stock_by_1(cls, product_id):
         product = cls.objects.filter(id=product_id).first()
-        product.in_stock = product.stock - 1
+        product.in_stock = product.in_stock - 1
         product.save()
 
 

@@ -18,7 +18,7 @@ class PurchaseServiceV1:
         product_obj = Product.objects.filter(id=product_id)
         if not product_obj:
             raise ProductDoesNotExistException(product_id)
-        if product_obj.stock == 0:
+        if product_obj.in_stock == 0:
             raise ProductOutOfStockException(product_id)
 
         discount_coupon_obj = DiscountCode.objects.filter(discount_coupon=discount_coupon)
@@ -26,7 +26,7 @@ class PurchaseServiceV1:
             raise DiscountCouponDoesNotExistException(discount_coupon)
 
         response = PaymentService.transaction(payment_details)
-        if response['status'] == '200':
+        if response['status'] == 200:
             product_obj.stock = product_obj.stock - 1
             product_obj.save()
             return "success"
@@ -63,7 +63,7 @@ class PurchaseServiceV2:
             raise DiscountCouponDoesNotExistException(discount_coupon)
 
         response = PaymentService.transaction(payment_details)
-        if response['status'] == '200':
+        if response['status'] == 200:
             Product.reduce_stock_by_1(product_id)
             return "success"
         if response['error'] == "Insufficient balance":
@@ -97,14 +97,14 @@ class PurchaseService:
 
     @classmethod
     def _post_transaction_operations(cls, response, product_id):
-        if response['status'] == '200':
+        if response.get('status') == 200:
             Product.reduce_stock_by_1(product_id)
             return "success"
-        if response['error'] == "Insufficient balance":
+        if response.get('error') == "Insufficient balance":
             raise InsufficientBalanceException()
-        if response['error'] == "Incorrect details":
+        if response.get('error') == "Incorrect details":
             raise IncorrectDetailsException()
-        if response['error'] == "Transaction timeout.":
+        if response.get('error') == "Transaction timeout.":
             raise TransactionTimeoutException()
 
     @classmethod
